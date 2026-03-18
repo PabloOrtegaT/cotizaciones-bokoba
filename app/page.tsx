@@ -47,6 +47,7 @@ export default function HomePage() {
   const [draft, setDraft] = useState<QuoteDraft | null>(null);
   const [ultimoAutoguardado, setUltimoAutoguardado] = useState("");
   const [backupDraft, setBackupDraft] = useState<QuoteDraft | null>(null);
+  const [editingItemId, setEditingItemId] = useState<string | null>(null);
 
   useEffect(() => {
     const savedDraft = window.localStorage.getItem(STORAGE_KEY);
@@ -83,6 +84,13 @@ export default function HomePage() {
     }
     return getSubtotalCentavos(draft.items);
   }, [draft]);
+
+  const editingItem = useMemo(() => {
+    if (!draft || !editingItemId) {
+      return null;
+    }
+    return draft.items.find((item) => item.id === editingItemId) ?? null;
+  }, [draft, editingItemId]);
 
   const updateField = <K extends keyof QuoteDraft>(field: K, value: QuoteDraft[K]) => {
     setDraft((current) => {
@@ -122,15 +130,21 @@ export default function HomePage() {
   };
 
   const addRow = () => {
+    const newItem = createEmptyItem();
+
     setDraft((current) => {
       if (!current) {
         return current;
       }
       return {
         ...current,
-        items: [...current.items, createEmptyItem()]
+        items: [...current.items, newItem]
       };
     });
+
+    if (typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches) {
+      setEditingItemId(newItem.id);
+    }
   };
 
   const removeRow = (id: string) => {
@@ -186,6 +200,25 @@ export default function HomePage() {
   const exportToPdf = () => {
     window.print();
   };
+
+  useEffect(() => {
+    if (editingItemId && !editingItem) {
+      setEditingItemId(null);
+    }
+  }, [editingItemId, editingItem]);
+
+  useEffect(() => {
+    if (!editingItem) {
+      return;
+    }
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [editingItem]);
 
   if (!draft) {
     return (
@@ -318,90 +351,136 @@ export default function HomePage() {
               Modifica conceptos, cantidades y costos unitarios. El total por renglón se calcula automáticamente.
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-3">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[60px]">#</TableHead>
-                  <TableHead className="min-w-[260px]">Concepto</TableHead>
-                  <TableHead className="w-[140px]">Cantidad</TableHead>
-                  <TableHead className="w-[120px]">Unidad</TableHead>
-                  <TableHead className="w-[170px] text-right">Costo Unitario</TableHead>
-                  <TableHead className="w-[180px] text-right">Importe</TableHead>
-                  <TableHead className="w-[100px] text-right">Acción</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {draft.items.map((item, index) => (
-                  <TableRow key={item.id}>
-                    <TableCell>{index + 1}</TableCell>
-                    <TableCell>
-                      <Input
-                        value={item.concepto}
-                        onChange={(event) => updateItem(item.id, "concepto", event.target.value)}
-                        placeholder="Escribe el concepto..."
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={item.cantidad}
-                        onChange={(event) =>
-                          updateItem(item.id, "cantidad", sanitizePositiveNumber(event.target.value, 0))
-                        }
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Input
-                        value={item.unidad}
-                        onChange={(event) => updateItem(item.id, "unidad", event.target.value)}
-                        placeholder="m2"
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={fromCentavos(item.costoUnitarioCentavos)}
-                        onChange={(event) =>
-                          updateItem(item.id, "costoUnitarioCentavos", toCentavos(event.target.value))
-                        }
-                        className="text-right"
-                        placeholder="0.00"
-                      />
-                    </TableCell>
-                    <TableCell className="text-right font-semibold text-slate-100">
+          <CardContent className="space-y-4">
+            <div className="space-y-3 md:hidden">
+              {draft.items.map((item, index) => (
+                <article key={item.id} className="rounded-md border border-slate-700 bg-slate-800/90 p-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-xs text-slate-400">Partida #{index + 1}</p>
+                      <p className="mt-1 text-sm font-semibold text-slate-100">
+                        {item.concepto.trim() || "Sin concepto"}
+                      </p>
+                    </div>
+                    <p className="text-sm font-semibold text-slate-100">
                       {formatMXNFromCentavos(getLineTotalCentavos(item))}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button
-                        variant="ghost"
-                        className="text-red-300 hover:bg-red-950/60 hover:text-red-200"
-                        onClick={() => removeRow(item.id)}
-                        disabled={draft.items.length === 1}
-                      >
-                        Eliminar
-                      </Button>
-                    </TableCell>
+                    </p>
+                  </div>
+                  <div className="mt-3 grid grid-cols-2 gap-2">
+                    <div className="rounded-md border border-slate-700 bg-slate-900/50 p-2">
+                      <p className="text-[11px] text-slate-400">Cantidad</p>
+                      <p className="text-sm text-slate-200">
+                        {formatCantidad(item.cantidad)} {item.unidad || "-"}
+                      </p>
+                    </div>
+                    <div className="rounded-md border border-slate-700 bg-slate-900/50 p-2">
+                      <p className="text-[11px] text-slate-400">Costo unitario</p>
+                      <p className="text-sm text-slate-200">{formatMXNFromCentavos(item.costoUnitarioCentavos)}</p>
+                    </div>
+                  </div>
+                  <div className="mt-3 grid grid-cols-2 gap-2">
+                    <Button variant="outline" onClick={() => setEditingItemId(item.id)}>
+                      Editar
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      className="text-red-300 hover:bg-red-950/60 hover:text-red-200"
+                      onClick={() => removeRow(item.id)}
+                      disabled={draft.items.length === 1}
+                    >
+                      Eliminar
+                    </Button>
+                  </div>
+                </article>
+              ))}
+            </div>
+
+            <div className="hidden md:block">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[60px]">#</TableHead>
+                    <TableHead className="min-w-[260px]">Concepto</TableHead>
+                    <TableHead className="w-[140px]">Cantidad</TableHead>
+                    <TableHead className="w-[120px]">Unidad</TableHead>
+                    <TableHead className="w-[170px] text-right">Costo Unitario</TableHead>
+                    <TableHead className="w-[180px] text-right">Importe</TableHead>
+                    <TableHead className="w-[100px] text-right">Acción</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-              <TableFooter>
-                <TableRow>
-                  <TableCell colSpan={5} className="text-right font-semibold">
-                    Total
-                  </TableCell>
-                  <TableCell className="text-right text-base font-bold text-slate-100">
-                    {formatMXNFromCentavos(subtotalCentavos)}
-                  </TableCell>
-                  <TableCell />
-                </TableRow>
-              </TableFooter>
-            </Table>
-            <Button variant="outline" onClick={addRow}>
+                </TableHeader>
+                <TableBody>
+                  {draft.items.map((item, index) => (
+                    <TableRow key={item.id}>
+                      <TableCell>{index + 1}</TableCell>
+                      <TableCell>
+                        <Input
+                          value={item.concepto}
+                          onChange={(event) => updateItem(item.id, "concepto", event.target.value)}
+                          placeholder="Escribe el concepto..."
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={item.cantidad}
+                          onChange={(event) =>
+                            updateItem(item.id, "cantidad", sanitizePositiveNumber(event.target.value, 0))
+                          }
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Input
+                          value={item.unidad}
+                          onChange={(event) => updateItem(item.id, "unidad", event.target.value)}
+                          placeholder="m2"
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={fromCentavos(item.costoUnitarioCentavos)}
+                          onChange={(event) =>
+                            updateItem(item.id, "costoUnitarioCentavos", toCentavos(event.target.value))
+                          }
+                          className="text-right"
+                          placeholder="0.00"
+                        />
+                      </TableCell>
+                      <TableCell className="text-right font-semibold text-slate-100">
+                        {formatMXNFromCentavos(getLineTotalCentavos(item))}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          variant="ghost"
+                          className="text-red-300 hover:bg-red-950/60 hover:text-red-200"
+                          onClick={() => removeRow(item.id)}
+                          disabled={draft.items.length === 1}
+                        >
+                          Eliminar
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+                <TableFooter>
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-right font-semibold">
+                      Total
+                    </TableCell>
+                    <TableCell className="text-right text-base font-bold text-slate-100">
+                      {formatMXNFromCentavos(subtotalCentavos)}
+                    </TableCell>
+                    <TableCell />
+                  </TableRow>
+                </TableFooter>
+              </Table>
+            </div>
+
+            <Button variant="outline" onClick={addRow} className="w-full md:w-auto">
               Agregar fila
             </Button>
           </CardContent>
@@ -444,6 +523,86 @@ export default function HomePage() {
           </CardContent>
         </Card>
       </div>
+
+      {editingItem ? (
+        <section className="no-print fixed inset-0 z-50 md:hidden" role="dialog" aria-modal="true" aria-labelledby="titulo-editar-partida">
+          <button
+            type="button"
+            className="absolute inset-0 bg-slate-950/70"
+            onClick={() => setEditingItemId(null)}
+            aria-label="Cerrar editor de partida"
+          />
+          <div className="absolute inset-0 flex flex-col bg-slate-900 px-4 pb-5 pt-4">
+            <div className="flex items-center justify-between">
+              <h2 id="titulo-editar-partida" className="text-lg font-semibold text-slate-100">
+                Editar partida
+              </h2>
+              <Button variant="ghost" onClick={() => setEditingItemId(null)}>
+                Cerrar
+              </Button>
+            </div>
+            <p className="mt-1 text-xs text-slate-400">Los cambios se guardan automáticamente.</p>
+
+            <div className="mt-4 flex-1 space-y-4 overflow-y-auto pb-4">
+              <div className="space-y-2">
+                <Label htmlFor="movil-concepto">Concepto</Label>
+                <Input
+                  id="movil-concepto"
+                  value={editingItem.concepto}
+                  onChange={(event) => updateItem(editingItem.id, "concepto", event.target.value)}
+                  placeholder="Escribe el concepto..."
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="movil-cantidad">Cantidad</Label>
+                <Input
+                  id="movil-cantidad"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={editingItem.cantidad}
+                  onChange={(event) => updateItem(editingItem.id, "cantidad", sanitizePositiveNumber(event.target.value, 0))}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="movil-unidad">Unidad</Label>
+                <Input
+                  id="movil-unidad"
+                  value={editingItem.unidad}
+                  onChange={(event) => updateItem(editingItem.id, "unidad", event.target.value)}
+                  placeholder="m2"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="movil-costo-unitario">Costo unitario</Label>
+                <Input
+                  id="movil-costo-unitario"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={fromCentavos(editingItem.costoUnitarioCentavos)}
+                  onChange={(event) => updateItem(editingItem.id, "costoUnitarioCentavos", toCentavos(event.target.value))}
+                  placeholder="0.00"
+                />
+              </div>
+
+              <div className="rounded-md border border-slate-700 bg-slate-800/80 p-3">
+                <p className="text-xs text-slate-400">Importe</p>
+                <p className="mt-1 text-lg font-semibold text-slate-100">
+                  {formatMXNFromCentavos(getLineTotalCentavos(editingItem))}
+                </p>
+              </div>
+            </div>
+
+            <Button onClick={() => setEditingItemId(null)} className="w-full">
+              Cerrar
+            </Button>
+          </div>
+        </section>
+      ) : null}
 
       <section className="print-only print-borderless mx-auto mt-0 max-w-4xl bg-white p-8 text-slate-900">
         <header className="flex items-start justify-between border-b border-slate-300 pb-4">
