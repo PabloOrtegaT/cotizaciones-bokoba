@@ -5,31 +5,42 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import {
   createDefaultDraft,
   createEmptyItem,
+  findWorkPreset,
   formatMXNFromCentavos,
   fromCentavos,
   generateFolio,
+  getUnitOptions,
   getLineTotalCentavos,
   getSubtotalCentavos,
   getTodayInputDate,
   normalizeDraft,
   sanitizePositiveNumber,
   toCentavos,
+  WORK_PRESETS,
   type QuoteDraft,
-  type QuoteItem
+  type QuoteItem,
+  type WorkPreset
 } from "@/lib/quote";
 
 const STORAGE_KEY = "cotizacion_tomas_borrador_v1";
+const CONCEPT_AUTOCOMPLETE_ID = "conceptos-albanileria";
 
 function formatCantidad(value: number) {
   if (Number.isInteger(value)) {
     return `${value}`;
   }
   return value.toFixed(2);
+}
+
+function formatCantidadConUnidad(cantidad: number, unidad: string) {
+  const cantidadFormateada = formatCantidad(cantidad);
+  return unidad ? `${cantidadFormateada} ${unidad}` : cantidadFormateada;
 }
 
 function cloneDraftValue(value: QuoteDraft): QuoteDraft {
@@ -41,6 +52,66 @@ function formatCurrentTime() {
     hour: "2-digit",
     minute: "2-digit"
   });
+}
+
+function formatWorkPresetMeta(preset: WorkPreset) {
+  if (preset.manualPricing) {
+    return "Precio variable";
+  }
+
+  const parts: string[] = [];
+
+  if (preset.unidad) {
+    parts.push(preset.unidad);
+  }
+
+  if (typeof preset.costoUnitarioCentavos === "number") {
+    parts.push(formatMXNFromCentavos(preset.costoUnitarioCentavos));
+  }
+
+  return parts.join(" | ");
+}
+
+type ConceptAutocompleteFieldProps = {
+  id?: string;
+  value: string;
+  onValueChange: (value: string) => void;
+  className?: string;
+};
+
+function ConceptAutocompleteField({ id, value, onValueChange, className }: ConceptAutocompleteFieldProps) {
+  return (
+    <Input
+      id={id}
+      value={value}
+      onChange={(event) => onValueChange(event.target.value)}
+      placeholder="Escribe o selecciona un concepto..."
+      list={CONCEPT_AUTOCOMPLETE_ID}
+      autoComplete="off"
+      className={className}
+    />
+  );
+}
+
+type UnitSelectFieldProps = {
+  id?: string;
+  value: string;
+  onValueChange: (value: string) => void;
+  className?: string;
+};
+
+function UnitSelectField({ id, value, onValueChange, className }: UnitSelectFieldProps) {
+  const options = getUnitOptions(value);
+
+  return (
+    <Select id={id} value={value} onChange={(event) => onValueChange(event.target.value)} className={className}>
+      {options.map((option) => (
+        <option key={option.value || "__sin-unidad__"} value={option.value}>
+          {option.label}
+        </option>
+      ))}
+    </Select>
+  );
 }
 
 export default function HomePage() {
@@ -124,6 +195,48 @@ export default function HomePage() {
             [field]: value
           } as QuoteItem;
           return updatedItem;
+        })
+      };
+    });
+  };
+
+  const updateConceptItem = (id: string, concepto: string) => {
+    const matchedPreset = findWorkPreset(concepto);
+
+    setDraft((current) => {
+      if (!current) {
+        return current;
+      }
+
+      return {
+        ...current,
+        items: current.items.map((item) => {
+          if (item.id !== id) {
+            return item;
+          }
+
+          if (!matchedPreset) {
+            return {
+              ...item,
+              concepto
+            };
+          }
+
+          if (matchedPreset.manualPricing) {
+            return {
+              ...item,
+              concepto: matchedPreset.concepto,
+              unidad: "",
+              costoUnitarioCentavos: 0
+            };
+          }
+
+          return {
+            ...item,
+            concepto: matchedPreset.concepto,
+            unidad: matchedPreset.unidad ?? item.unidad,
+            costoUnitarioCentavos: matchedPreset.costoUnitarioCentavos ?? item.costoUnitarioCentavos
+          };
         })
       };
     });
@@ -348,7 +461,8 @@ export default function HomePage() {
           <CardHeader>
             <CardTitle>Partidas</CardTitle>
             <CardDescription>
-              Modifica conceptos, cantidades y costos unitarios. El total por renglón se calcula automáticamente.
+              Modifica conceptos, cantidades y costos unitarios. Selecciona un concepto del catálogo para
+              autocompletar unidad y precio. El total por renglón se calcula automáticamente.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -369,9 +483,7 @@ export default function HomePage() {
                   <div className="mt-3 grid grid-cols-2 gap-2">
                     <div className="rounded-md border border-slate-700 bg-slate-900/50 p-2">
                       <p className="text-[11px] text-slate-400">Cantidad</p>
-                      <p className="text-sm text-slate-200">
-                        {formatCantidad(item.cantidad)} {item.unidad || "-"}
-                      </p>
+                      <p className="text-sm text-slate-200">{formatCantidadConUnidad(item.cantidad, item.unidad)}</p>
                     </div>
                     <div className="rounded-md border border-slate-700 bg-slate-900/50 p-2">
                       <p className="text-[11px] text-slate-400">Costo unitario</p>
@@ -413,10 +525,9 @@ export default function HomePage() {
                     <TableRow key={item.id}>
                       <TableCell>{index + 1}</TableCell>
                       <TableCell>
-                        <Input
+                        <ConceptAutocompleteField
                           value={item.concepto}
-                          onChange={(event) => updateItem(item.id, "concepto", event.target.value)}
-                          placeholder="Escribe el concepto..."
+                          onValueChange={(value) => updateConceptItem(item.id, value)}
                         />
                       </TableCell>
                       <TableCell>
@@ -431,10 +542,9 @@ export default function HomePage() {
                         />
                       </TableCell>
                       <TableCell>
-                        <Input
+                        <UnitSelectField
                           value={item.unidad}
-                          onChange={(event) => updateItem(item.id, "unidad", event.target.value)}
-                          placeholder="m2"
+                          onValueChange={(value) => updateItem(item.id, "unidad", value)}
                         />
                       </TableCell>
                       <TableCell>
@@ -546,11 +656,10 @@ export default function HomePage() {
             <div className="mt-4 flex-1 space-y-4 overflow-y-auto pb-4">
               <div className="space-y-2">
                 <Label htmlFor="movil-concepto">Concepto</Label>
-                <Input
+                <ConceptAutocompleteField
                   id="movil-concepto"
                   value={editingItem.concepto}
-                  onChange={(event) => updateItem(editingItem.id, "concepto", event.target.value)}
-                  placeholder="Escribe el concepto..."
+                  onValueChange={(value) => updateConceptItem(editingItem.id, value)}
                 />
               </div>
 
@@ -568,11 +677,10 @@ export default function HomePage() {
 
               <div className="space-y-2">
                 <Label htmlFor="movil-unidad">Unidad</Label>
-                <Input
+                <UnitSelectField
                   id="movil-unidad"
                   value={editingItem.unidad}
-                  onChange={(event) => updateItem(editingItem.id, "unidad", event.target.value)}
-                  placeholder="m2"
+                  onValueChange={(value) => updateItem(editingItem.id, "unidad", value)}
                 />
               </div>
 
@@ -603,6 +711,18 @@ export default function HomePage() {
           </div>
         </section>
       ) : null}
+
+      <datalist id={CONCEPT_AUTOCOMPLETE_ID}>
+        {WORK_PRESETS.map((preset) => {
+          const meta = formatWorkPresetMeta(preset);
+
+          return (
+            <option key={preset.concepto} value={preset.concepto} label={meta}>
+              {meta}
+            </option>
+          );
+        })}
+      </datalist>
 
       <section className="print-only print-borderless mx-auto mt-0 max-w-4xl bg-white p-8 text-slate-900">
         <header className="flex items-start justify-between border-b border-slate-300 pb-4">
@@ -652,9 +772,7 @@ export default function HomePage() {
                 <tr key={item.id} className="border-b border-slate-200">
                   <td className="px-2 py-2">{index + 1}</td>
                   <td className="px-2 py-2">{item.concepto || "-"}</td>
-                  <td className="px-2 py-2 text-right">
-                    {formatCantidad(item.cantidad)} {item.unidad}
-                  </td>
+                  <td className="px-2 py-2 text-right">{formatCantidadConUnidad(item.cantidad, item.unidad)}</td>
                   <td className="px-2 py-2 text-right">{formatMXNFromCentavos(item.costoUnitarioCentavos)}</td>
                   <td className="px-2 py-2 text-right font-semibold">{formatMXNFromCentavos(getLineTotalCentavos(item))}</td>
                 </tr>
