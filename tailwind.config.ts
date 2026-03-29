@@ -44,6 +44,15 @@ const config: Config = {
         lg: "0.75rem",
         md: "0.625rem",
         sm: "0.5rem"
+      },
+      backdropBlur: {
+        xs: "2px"
+      },
+      animation: {
+        "fade-in": "fadeIn 0.3s ease-out forwards",
+        "slide-up": "slideInFromBottom 0.4s ease-out forwards",
+        "slide-right": "slideInFromRight 0.3s ease-out forwards",
+        "scale-in": "scaleIn 0.3s ease-out forwards"
       }
     }
   },

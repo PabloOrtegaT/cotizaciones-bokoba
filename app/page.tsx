@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { Navbar } from "@/app/components/navbar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Select } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
@@ -21,7 +23,9 @@ import {
   getTodayInputDate,
   normalizeDraft,
   sanitizePositiveNumber,
+  saveQuote,
   toCentavos,
+  UNIT_OPTIONS,
   WORK_PRESETS,
   type QuoteDraft,
   type QuoteItem,
@@ -114,11 +118,133 @@ function UnitSelectField({ id, value, onValueChange, className }: UnitSelectFiel
   );
 }
 
+type ToastType = "success" | "error" | "info";
+
+type Toast = {
+  id: string;
+  message: string;
+  type: ToastType;
+};
+
+function useToast() {
+  const [toasts, setToasts] = useState<Toast[]>([]);
+
+  const showToast = (message: string, type: ToastType = "info") => {
+    const id = `${Date.now()}-${Math.random()}`;
+    setToasts((prev) => [...prev, { id, message, type }]);
+    
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((t) => t.id !== id));
+    }, 3000);
+  };
+
+  const removeToast = (id: string) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  };
+
+  return { toasts, showToast, removeToast };
+}
+
+function ToastContainer({ toasts, onRemove }: { toasts: Toast[]; onRemove: (id: string) => void }) {
+  return (
+    <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2">
+      {toasts.map((toast) => (
+        <div
+          key={toast.id}
+          className={`flex items-center gap-3 rounded-lg px-4 py-3 shadow-lg transition-all duration-300 animate-in slide-in-from-right ${
+            toast.type === "success"
+              ? "border border-emerald-500/30 bg-emerald-950/90 text-emerald-100"
+              : toast.type === "error"
+              ? "border border-red-500/30 bg-red-950/90 text-red-100"
+              : "border border-slate-600 bg-slate-900/95 text-slate-100"
+          }`}
+        >
+          {toast.type === "success" && (
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="text-emerald-400"
+            >
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+              <polyline points="22 4 12 14.01 9 11.01" />
+            </svg>
+          )}
+          {toast.type === "error" && (
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="text-red-400"
+            >
+              <circle cx="12" cy="12" r="10" />
+              <line x1="15" x2="9" y1="9" y2="15" />
+              <line x1="9" x2="15" y1="9" y2="15" />
+            </svg>
+          )}
+          {toast.type === "info" && (
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="text-cyan-400"
+            >
+              <circle cx="12" cy="12" r="10" />
+              <line x1="12" x2="12" y1="16" y2="12" />
+              <line x1="12" x2="12.01" y1="8" y2="8" />
+            </svg>
+          )}
+          <span className="text-sm font-medium">{toast.message}</span>
+          <button
+            onClick={() => onRemove(toast.id)}
+            className="ml-2 text-current opacity-60 hover:opacity-100"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M18 6 6 18" />
+              <path d="m6 6 12 12" />
+            </svg>
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function HomePage() {
   const [draft, setDraft] = useState<QuoteDraft | null>(null);
   const [ultimoAutoguardado, setUltimoAutoguardado] = useState("");
   const [backupDraft, setBackupDraft] = useState<QuoteDraft | null>(null);
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const { toasts, showToast, removeToast } = useToast();
 
   useEffect(() => {
     const savedDraft = window.localStorage.getItem(STORAGE_KEY);
@@ -314,6 +440,21 @@ export default function HomePage() {
     window.print();
   };
 
+  const handleSaveQuote = () => {
+    if (!draft) return;
+    
+    setIsSaving(true);
+    
+    try {
+      saveQuote(draft);
+      showToast("Cotización guardada exitosamente", "success");
+    } catch {
+      showToast("Error al guardar la cotización", "error");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   useEffect(() => {
     if (editingItemId && !editingItem) {
       setEditingItemId(null);
@@ -335,134 +476,262 @@ export default function HomePage() {
 
   if (!draft) {
     return (
-      <main className="min-h-screen bg-slate-900 px-4 py-10">
-        <div className="mx-auto max-w-6xl text-sm text-slate-300">Cargando cotización...</div>
+      <main className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 px-4 py-10">
+        <div className="mx-auto flex max-w-6xl items-center justify-center py-20">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-slate-600 border-t-cyan-400" />
+        </div>
       </main>
     );
   }
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-800 px-4 py-6 sm:py-10">
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
-        <Card className="no-print reveal-up border-slate-700/80 bg-slate-800/70">
+    <main className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 px-4 py-6 sm:py-10">
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-1 sm:px-0">
+        {/* Navigation Bar */}
+        <Navbar />
+
+        {/* Main Header Card */}
+        <Card className="no-print border-slate-700/50 bg-slate-800/50 backdrop-blur-sm">
           <CardHeader className="gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div className="space-y-2">
               <CardTitle className="text-2xl font-bold text-slate-100">Cotización de Albañilería</CardTitle>
-              <CardDescription>
+              <CardDescription className="text-slate-400">
                 Edita los datos y exporta a PDF con impresión del navegador. Moneda en MXN.
               </CardDescription>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-slate-500">
                 Último autoguardado local: {ultimoAutoguardado ? `${ultimoAutoguardado} hrs` : "pendiente"}
               </p>
             </div>
-            <div className="grid w-full gap-2 sm:w-auto sm:min-w-[260px]">
+            <div className="grid w-full gap-2 sm:w-auto sm:min-w-[280px]">
+              <Button
+                variant="outline"
+                onClick={handleSaveQuote}
+                disabled={isSaving}
+                className="border-emerald-600/50 bg-emerald-950/20 text-emerald-400 hover:bg-emerald-950/40 hover:text-emerald-300"
+              >
+                {isSaving ? (
+                  <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-emerald-400 border-t-transparent" />
+                ) : (
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="mr-2"
+                  >
+                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+                    <polyline points="17 21 17 13 7 13 7 21" />
+                    <polyline points="7 3 7 8 15 8" />
+                  </svg>
+                )}
+                Guardar Cotización
+              </Button>
               <div className="grid grid-cols-2 gap-2">
-                <Button variant="outline" onClick={regenerateFolio}>
+                <Button variant="outline" onClick={regenerateFolio} className="border-slate-600 hover:bg-slate-700">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="mr-1"
+                  >
+                    <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                    <path d="M3 3v5h5" />
+                    <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16" />
+                    <path d="M16 16h5v5" />
+                  </svg>
                   Nuevo folio
                 </Button>
-                <Button variant="outline" onClick={resetDraft}>
-                  Limpiar borrador
+                <Button variant="outline" onClick={resetDraft} className="border-slate-600 hover:bg-slate-700">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="mr-1"
+                  >
+                    <path d="M3 6h18" />
+                    <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+                    <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+                  </svg>
+                  Limpiar
                 </Button>
               </div>
-              <Button variant="secondary" onClick={undoResetDraft} disabled={!backupDraft}>
+              <Button
+                variant="secondary"
+                onClick={undoResetDraft}
+                disabled={!backupDraft}
+                className="bg-slate-700 hover:bg-slate-600 disabled:opacity-50"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="mr-1"
+                >
+                  <path d="M3 7v6h6" />
+                  <path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13" />
+                </svg>
                 Deshacer limpieza
               </Button>
             </div>
           </CardHeader>
         </Card>
 
-        <Card className="no-print reveal-up border-slate-700/80 bg-slate-800/70" data-delay="1">
+        <Card className="no-print border-slate-700/50 bg-slate-800/50 backdrop-blur-sm">
           <CardHeader>
-            <CardTitle>Datos de la cotización</CardTitle>
-            <CardDescription>Todos los campos son editables.</CardDescription>
+            <CardTitle className="flex items-center gap-2 text-slate-100">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="text-cyan-400"
+              >
+                <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
+                <circle cx="12" cy="7" r="4" />
+              </svg>
+              Datos de la cotización
+            </CardTitle>
+            <CardDescription className="text-slate-400">Todos los campos son editables.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="grid gap-4 md:grid-cols-3">
               <div className="space-y-2">
-                <Label htmlFor="folio">Folio</Label>
+                <Label htmlFor="folio" className="text-slate-300">Folio</Label>
                 <Input
                   id="folio"
                   value={draft.folio}
                   onChange={(event) => updateField("folio", event.target.value)}
                   placeholder="COT-YYYYMMDD-0001"
+                  className="border-slate-600 bg-slate-900/50 text-slate-100 focus:border-cyan-500 focus:ring-cyan-500/20"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="fecha">Fecha</Label>
+                <Label htmlFor="fecha" className="text-slate-300">Fecha</Label>
                 <Input
                   id="fecha"
                   type="date"
                   value={draft.fecha}
                   onChange={(event) => updateField("fecha", event.target.value)}
+                  className="border-slate-600 bg-slate-900/50 text-slate-100 focus:border-cyan-500 focus:ring-cyan-500/20"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="cotizador">Cotizador</Label>
+                <Label htmlFor="cotizador" className="text-slate-300">Cotizador</Label>
                 <Input
                   id="cotizador"
                   value={draft.cotizador}
                   onChange={(event) => updateField("cotizador", event.target.value)}
+                  className="border-slate-600 bg-slate-900/50 text-slate-100 focus:border-cyan-500 focus:ring-cyan-500/20"
                 />
               </div>
             </div>
 
-            <div className="grid gap-4 rounded-md border border-slate-700 bg-slate-800/80 p-4 md:grid-cols-3">
+            <div className="grid gap-4 rounded-lg border border-slate-700/50 bg-slate-900/30 p-4 md:grid-cols-3">
               <div className="space-y-2">
-                <Label htmlFor="negocio">Nombre del negocio</Label>
+                <Label htmlFor="negocio" className="text-slate-300">Nombre del negocio</Label>
                 <Input
                   id="negocio"
                   value={draft.nombreNegocio}
                   onChange={(event) => updateField("nombreNegocio", event.target.value)}
+                  className="border-slate-600 bg-slate-900/50 text-slate-100 focus:border-cyan-500 focus:ring-cyan-500/20"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="ubicacion">Ubicación</Label>
+                <Label htmlFor="ubicacion" className="text-slate-300">Ubicación</Label>
                 <Input
                   id="ubicacion"
                   value={draft.ubicacionNegocio}
                   onChange={(event) => updateField("ubicacionNegocio", event.target.value)}
+                  className="border-slate-600 bg-slate-900/50 text-slate-100 focus:border-cyan-500 focus:ring-cyan-500/20"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="tel-negocio">Teléfono del negocio</Label>
+                <Label htmlFor="tel-negocio" className="text-slate-300">Teléfono del negocio</Label>
                 <Input
                   id="tel-negocio"
                   value={draft.telefonoNegocio}
                   onChange={(event) => updateField("telefonoNegocio", event.target.value)}
                   placeholder="9991234567"
+                  className="border-slate-600 bg-slate-900/50 text-slate-100 focus:border-cyan-500 focus:ring-cyan-500/20"
                 />
               </div>
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="cliente">Cliente - Nombre</Label>
+                <Label htmlFor="cliente" className="text-slate-300">Cliente - Nombre</Label>
                 <Input
                   id="cliente"
                   value={draft.clienteNombre}
                   onChange={(event) => updateField("clienteNombre", event.target.value)}
                   placeholder="Nombre completo del cliente"
+                  className="border-slate-600 bg-slate-900/50 text-slate-100 focus:border-cyan-500 focus:ring-cyan-500/20"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="tel-cliente">Cliente - Teléfono</Label>
+                <Label htmlFor="tel-cliente" className="text-slate-300">Cliente - Teléfono</Label>
                 <Input
                   id="tel-cliente"
                   value={draft.clienteTelefono}
                   onChange={(event) => updateField("clienteTelefono", event.target.value)}
                   placeholder="Número de contacto del cliente"
+                  className="border-slate-600 bg-slate-900/50 text-slate-100 focus:border-cyan-500 focus:ring-cyan-500/20"
                 />
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="no-print reveal-up border-slate-700/80 bg-slate-800/70" data-delay="2">
+        <Card className="no-print border-slate-700/50 bg-slate-800/50 backdrop-blur-sm">
           <CardHeader>
-            <CardTitle>Partidas</CardTitle>
-            <CardDescription>
+            <CardTitle className="flex items-center gap-2 text-slate-100">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="text-cyan-400"
+              >
+                <path d="M12 2H2v10h10V2zM22 2h-10v10h10V2zM22 14h-10v10h10V14zM12 14H2v10h10V14z" />
+              </svg>
+              Partidas
+            </CardTitle>
+            <CardDescription className="text-slate-400">
               Modifica conceptos, cantidades y costos unitarios. Selecciona un concepto del catálogo para
-              autocompletar unidad y precio. El total por renglón se calcula automáticamente.
+              autocompletar unidad y precio.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -481,13 +750,13 @@ export default function HomePage() {
                     </p>
                   </div>
                   <div className="mt-3 grid grid-cols-2 gap-2">
-                    <div className="rounded-md border border-slate-700 bg-slate-900/50 p-2">
-                      <p className="text-[11px] text-slate-400">Cantidad</p>
-                      <p className="text-sm text-slate-200">{formatCantidadConUnidad(item.cantidad, item.unidad)}</p>
+                    <div className="rounded-md border border-slate-700 bg-slate-900/50 px-2 py-1.5 min-w-0">
+                      <p className="text-[10px] uppercase tracking-wide text-slate-500 truncate">Cantidad</p>
+                      <p className="text-sm text-slate-200 truncate">{formatCantidadConUnidad(item.cantidad, item.unidad)}</p>
                     </div>
-                    <div className="rounded-md border border-slate-700 bg-slate-900/50 p-2">
-                      <p className="text-[11px] text-slate-400">Costo unitario</p>
-                      <p className="text-sm text-slate-200">{formatMXNFromCentavos(item.costoUnitarioCentavos)}</p>
+                    <div className="rounded-md border border-slate-700 bg-slate-900/50 px-2 py-1.5 min-w-0">
+                      <p className="text-[10px] uppercase tracking-wide text-slate-500 truncate">Costo unit.</p>
+                      <p className="text-sm text-slate-200 truncate">{formatMXNFromCentavos(item.costoUnitarioCentavos)}</p>
                     </div>
                   </div>
                   <div className="mt-3 grid grid-cols-2 gap-2">
@@ -596,43 +865,84 @@ export default function HomePage() {
           </CardContent>
         </Card>
 
-        <Card className="no-print reveal-up border-slate-700/80 bg-slate-800/70" data-delay="3">
+        <Card className="no-print border-slate-700/50 bg-slate-800/50 backdrop-blur-sm">
           <CardContent className="grid gap-6 pt-6 lg:grid-cols-[2fr_1fr]">
             <div className="space-y-2">
-              <Label htmlFor="notas">Notas u observaciones</Label>
+              <Label htmlFor="notas" className="text-slate-300">Notas u observaciones</Label>
               <Textarea
                 id="notas"
                 value={draft.notas}
                 onChange={(event) => updateField("notas", event.target.value)}
                 placeholder="Ej. Tiempo de entrega, forma de pago, alcances del trabajo..."
+                className="border-slate-600 bg-slate-900/50 text-slate-100 placeholder:text-slate-600"
               />
             </div>
-            <div className="rounded-md border border-slate-700 bg-slate-800/80 p-4">
+            <div className="rounded-lg border border-slate-700/50 bg-gradient-to-br from-slate-900/80 to-slate-800/80 p-4">
               <p className="text-sm font-semibold text-slate-200">Resumen</p>
               <div className="mt-3 space-y-2 text-sm">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between text-slate-400">
                   <span>Moneda</span>
-                  <span>MXN ($)</span>
+                  <span className="font-medium text-slate-200">MXN ($)</span>
                 </div>
-                <div className="flex items-center justify-between border-t border-slate-700 pt-2 text-base font-semibold text-slate-100">
-                  <span>Total</span>
-                  <span>{formatMXNFromCentavos(subtotalCentavos)}</span>
+                <div className="flex items-center justify-between border-t border-slate-700 pt-2">
+                  <span className="text-base font-semibold text-slate-100">Total</span>
+                  <span className="text-xl font-bold text-emerald-400">
+                    {formatMXNFromCentavos(subtotalCentavos)}
+                  </span>
                 </div>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="no-print reveal-up border-slate-700/80 bg-slate-800/70">
-          <CardContent className="pt-6">
-            <div className="flex justify-end">
-              <Button onClick={exportToPdf} className="w-full sm:w-auto">
-                Exportar PDF
-              </Button>
+        <Card className="no-print border-slate-700/50 bg-slate-800/50 backdrop-blur-sm">
+          <CardContent className="flex flex-wrap items-center justify-between gap-4 pt-6">
+            <div className="flex items-center gap-2 text-sm text-slate-400">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <circle cx="12" cy="12" r="10" />
+                <line x1="12" x2="12" y1="16" y2="12" />
+                <line x1="12" x2="12.01" y1="8" y2="8" />
+              </svg>
+              <span>Se abrirá el diálogo de impresión del navegador</span>
             </div>
+            <Button
+              onClick={exportToPdf}
+              className="bg-gradient-to-r from-cyan-600 to-blue-600 text-white hover:from-cyan-500 hover:to-blue-500"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="mr-2"
+              >
+                <polyline points="6 9 6 2 18 2 18 9" />
+                <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+                <rect width="12" height="8" x="6" y="14" />
+              </svg>
+              Exportar PDF
+            </Button>
           </CardContent>
         </Card>
       </div>
+
+      {/* Toast Notifications */}
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
 
       {editingItem ? (
         <section className="no-print fixed inset-0 z-50 md:hidden" role="dialog" aria-modal="true" aria-labelledby="titulo-editar-partida">
@@ -654,17 +964,24 @@ export default function HomePage() {
             <p className="mt-1 text-xs text-slate-400">Los cambios se guardan automáticamente.</p>
 
             <div className="mt-4 flex-1 space-y-4 overflow-y-auto pb-4">
-              <div className="space-y-2">
-                <Label htmlFor="movil-concepto">Concepto</Label>
-                <ConceptAutocompleteField
+              {/* Concept - Using SearchableSelect for better mobile UX */}
+              <div className="space-y-1.5">
+                <Label htmlFor="movil-concepto" className="text-xs text-slate-400">Concepto</Label>
+                <SearchableSelect
                   id="movil-concepto"
+                  options={WORK_PRESETS.map((preset) => ({
+                    value: preset.concepto,
+                    label: preset.concepto,
+                    meta: formatWorkPresetMeta(preset),
+                  }))}
                   value={editingItem.concepto}
                   onValueChange={(value) => updateConceptItem(editingItem.id, value)}
+                  placeholder="Buscar concepto..."
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="movil-cantidad">Cantidad</Label>
+              <div className="space-y-1.5">
+                <Label htmlFor="movil-cantidad" className="text-xs text-slate-400">Cantidad</Label>
                 <Input
                   id="movil-cantidad"
                   type="number"
@@ -672,20 +989,26 @@ export default function HomePage() {
                   step="0.01"
                   value={editingItem.cantidad}
                   onChange={(event) => updateItem(editingItem.id, "cantidad", sanitizePositiveNumber(event.target.value, 0))}
+                  className="border-slate-600 bg-slate-900/50"
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="movil-unidad">Unidad</Label>
-                <UnitSelectField
+              <div className="space-y-1.5">
+                <Label htmlFor="movil-unidad" className="text-xs text-slate-400">Unidad</Label>
+                <SearchableSelect
                   id="movil-unidad"
+                  options={UNIT_OPTIONS.map((opt) => ({
+                    value: opt.value,
+                    label: opt.label
+                  }))}
                   value={editingItem.unidad}
                   onValueChange={(value) => updateItem(editingItem.id, "unidad", value)}
+                  placeholder="Seleccionar unidad..."
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="movil-costo-unitario">Costo unitario</Label>
+              <div className="space-y-1.5">
+                <Label htmlFor="movil-costo-unitario" className="text-xs text-slate-400">Costo unitario</Label>
                 <Input
                   id="movil-costo-unitario"
                   type="number"
@@ -694,11 +1017,12 @@ export default function HomePage() {
                   value={fromCentavos(editingItem.costoUnitarioCentavos)}
                   onChange={(event) => updateItem(editingItem.id, "costoUnitarioCentavos", toCentavos(event.target.value))}
                   placeholder="0.00"
+                  className="border-slate-600 bg-slate-900/50"
                 />
               </div>
 
               <div className="rounded-md border border-slate-700 bg-slate-800/80 p-3">
-                <p className="text-xs text-slate-400">Importe</p>
+                <p className="text-[10px] uppercase tracking-wide text-slate-500">Importe</p>
                 <p className="mt-1 text-lg font-semibold text-slate-100">
                   {formatMXNFromCentavos(getLineTotalCentavos(editingItem))}
                 </p>

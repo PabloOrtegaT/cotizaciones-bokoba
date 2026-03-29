@@ -4,52 +4,67 @@
 
 @layer base {
   :root {
-    --background: 220 14% 14%;
+    --background: 222 47% 4%;
     --foreground: 210 20% 96%;
 
-    --card: 220 14% 18%;
+    --card: 220 20% 10%;
     --card-foreground: 210 20% 96%;
 
-    --primary: 199 89% 56%;
-    --primary-foreground: 220 18% 12%;
+    --primary: 187 85% 45%;
+    --primary-foreground: 220 18% 8%;
 
-    --secondary: 220 12% 24%;
+    --secondary: 220 15% 18%;
     --secondary-foreground: 210 20% 92%;
 
-    --muted: 220 12% 22%;
-    --muted-foreground: 215 12% 72%;
+    --muted: 220 15% 16%;
+    --muted-foreground: 215 12% 65%;
 
-    --accent: 220 14% 30%;
+    --accent: 220 18% 22%;
     --accent-foreground: 210 20% 94%;
 
-    --destructive: 0 84.2% 60.2%;
+    --destructive: 0 84% 60%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 220 12% 32%;
-    --input: 220 12% 32%;
-    --ring: 199 89% 56%;
+    --border: 220 15% 25%;
+    --input: 220 15% 20%;
+    --ring: 187 85% 45%;
   }
 
   * {
     @apply border-border;
   }
 
+  html {
+    scroll-behavior: smooth;
+  }
+
   body {
     @apply bg-background text-foreground antialiased;
-    font-family: "Trebuchet MS", "Gill Sans", "Verdana", sans-serif;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   }
 
   h1,
   h2,
   h3 {
-    font-family: "Georgia", "Times New Roman", serif;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-weight: 700;
   }
 }
 
-@keyframes riseIn {
+/* Animations */
+@keyframes fadeIn {
   from {
     opacity: 0;
-    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideInFromBottom {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
   }
   to {
     opacity: 1;
@@ -57,21 +72,60 @@
   }
 }
 
+@keyframes slideInFromRight {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(6, 182, 212, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 20px 4px rgba(6, 182, 212, 0.2);
+  }
+}
+
 @media (prefers-reduced-motion: no-preference) {
+  .animate-in {
+    animation: fadeIn 0.3s ease-out forwards;
+  }
+
+  .slide-in-from-bottom {
+    animation: slideInFromBottom 0.4s ease-out forwards;
+  }
+
+  .slide-in-from-right {
+    animation: slideInFromRight 0.3s ease-out forwards;
+  }
+
+  .scale-in {
+    animation: scaleIn 0.3s ease-out forwards;
+  }
+
   .reveal-up {
-    animation: riseIn 420ms ease both;
+    animation: slideInFromBottom 0.5s ease-out forwards;
   }
 
-  .reveal-up[data-delay="1"] {
-    animation-delay: 70ms;
-  }
-
-  .reveal-up[data-delay="2"] {
-    animation-delay: 120ms;
-  }
-
-  .reveal-up[data-delay="3"] {
-    animation-delay: 170ms;
+  .pulse-glow {
+    animation: pulse-glow 2s ease-in-out infinite;
   }
 }
 
