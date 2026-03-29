@@ -146,6 +146,12 @@
 
   body {
     background: white !important;
+    font-family: Arial, Helvetica, sans-serif !important;
+  }
+
+  .print-only,
+  .print-only * {
+    font-family: Arial, Helvetica, sans-serif !important;
   }
 }
 
