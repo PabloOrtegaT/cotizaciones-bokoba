@@ -5,6 +5,7 @@ import { Navbar } from "@/app/components/navbar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { NumericInput } from "@/components/ui/numeric-input";
 import { Label } from "@/components/ui/label";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Select } from "@/components/ui/select";
@@ -108,13 +109,18 @@ function UnitSelectField({ id, value, onValueChange, className }: UnitSelectFiel
   const options = getUnitOptions(value);
 
   return (
-    <Select id={id} value={value} onChange={(event) => onValueChange(event.target.value)} className={className}>
-      {options.map((option) => (
-        <option key={option.value || "__sin-unidad__"} value={option.value}>
-          {option.label}
-        </option>
-      ))}
-    </Select>
+    <SearchableSelect
+      id={id}
+      options={options.map((opt) => ({
+        value: opt.value,
+        label: opt.label
+      }))}
+      value={value}
+      onValueChange={onValueChange}
+      placeholder="Seleccionar unidad..."
+      allowFreeText={true}
+      className={className}
+    />
   );
 }
 
@@ -800,13 +806,13 @@ export default function HomePage() {
                         />
                       </TableCell>
                       <TableCell>
-                        <Input
-                          type="number"
-                          min="0"
-                          step="0.01"
+                        <NumericInput
+                          min={0}
+                          step={0.01}
+                          decimals={2}
                           value={item.cantidad}
-                          onChange={(event) =>
-                            updateItem(item.id, "cantidad", sanitizePositiveNumber(event.target.value, 0))
+                          onChange={(value) =>
+                            updateItem(item.id, "cantidad", value)
                           }
                         />
                       </TableCell>
@@ -817,13 +823,13 @@ export default function HomePage() {
                         />
                       </TableCell>
                       <TableCell>
-                        <Input
-                          type="number"
-                          min="0"
-                          step="0.01"
+                        <NumericInput
+                          min={0}
+                          step={0.01}
+                          decimals={2}
                           value={fromCentavos(item.costoUnitarioCentavos)}
-                          onChange={(event) =>
-                            updateItem(item.id, "costoUnitarioCentavos", toCentavos(event.target.value))
+                          onChange={(value) =>
+                            updateItem(item.id, "costoUnitarioCentavos", Math.round(value * 100))
                           }
                           className="text-right"
                           placeholder="0.00"
@@ -977,19 +983,20 @@ export default function HomePage() {
                   value={editingItem.concepto}
                   onValueChange={(value) => updateConceptItem(editingItem.id, value)}
                   placeholder="Buscar concepto..."
+                  allowFreeText={true}
                 />
               </div>
 
               <div className="space-y-1.5">
                 <Label htmlFor="movil-cantidad" className="text-xs text-slate-400">Cantidad</Label>
-                <Input
+                <NumericInput
                   id="movil-cantidad"
-                  type="number"
-                  min="0"
-                  step="0.01"
+                  min={0}
+                  step={0.01}
+                  decimals={2}
                   value={editingItem.cantidad}
-                  onChange={(event) => updateItem(editingItem.id, "cantidad", sanitizePositiveNumber(event.target.value, 0))}
-                  className="border-slate-600 bg-slate-900/50"
+                  onChange={(value) => updateItem(editingItem.id, "cantidad", value)}
+                  className="border-slate-600"
                 />
               </div>
 
@@ -1004,20 +1011,21 @@ export default function HomePage() {
                   value={editingItem.unidad}
                   onValueChange={(value) => updateItem(editingItem.id, "unidad", value)}
                   placeholder="Seleccionar unidad..."
+                  allowFreeText={true}
                 />
               </div>
 
               <div className="space-y-1.5">
                 <Label htmlFor="movil-costo-unitario" className="text-xs text-slate-400">Costo unitario</Label>
-                <Input
+                <NumericInput
                   id="movil-costo-unitario"
-                  type="number"
-                  min="0"
-                  step="0.01"
+                  min={0}
+                  step={0.01}
+                  decimals={2}
                   value={fromCentavos(editingItem.costoUnitarioCentavos)}
-                  onChange={(event) => updateItem(editingItem.id, "costoUnitarioCentavos", toCentavos(event.target.value))}
+                  onChange={(value) => updateItem(editingItem.id, "costoUnitarioCentavos", Math.round(value * 100))}
                   placeholder="0.00"
-                  className="border-slate-600 bg-slate-900/50"
+                  className="border-slate-600"
                 />
               </div>
 
