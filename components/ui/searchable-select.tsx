@@ -120,7 +120,7 @@ const SearchableSelect = React.forwardRef<HTMLInputElement, SearchableSelectProp
     };
 
     // Handle blur - save custom text if enabled
-    const handleBlur = (_event: React.FocusEvent<HTMLInputElement>) => {
+    const handleBlur = () => {
       // Small delay to allow click events on dropdown items to fire first
       setTimeout(() => {
         if (allowFreeText && search.trim() && search.trim() !== value) {
