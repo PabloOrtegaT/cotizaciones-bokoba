@@ -8,8 +8,6 @@ import { Input } from "@/components/ui/input";
 import { NumericInput } from "@/components/ui/numeric-input";
 import { Label } from "@/components/ui/label";
 import { SearchableSelect } from "@/components/ui/searchable-select";
-import { Select } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import {
   createDefaultDraft,
@@ -23,10 +21,7 @@ import {
   getSubtotalCentavos,
   getTodayInputDate,
   normalizeDraft,
-  sanitizePositiveNumber,
   saveQuote,
-  toCentavos,
-  UNIT_OPTIONS,
   WORK_PRESETS,
   type QuoteDraft,
   type QuoteItem,
@@ -804,46 +799,64 @@ export default function HomePage() {
             </div>
 
             <div className="hidden md:block">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-[60px]">#</TableHead>
-                    <TableHead className="min-w-[260px]">Concepto</TableHead>
-                    <TableHead className="w-[140px]">Cantidad</TableHead>
-                    <TableHead className="w-[120px]">Unidad</TableHead>
-                    <TableHead className="w-[170px] text-right">Costo Unitario</TableHead>
-                    <TableHead className="w-[180px] text-right">Importe</TableHead>
-                    <TableHead className="w-[100px] text-right">Acción</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
+              <div className="rounded-xl border border-slate-700/50 bg-slate-900/30 overflow-hidden shadow-2xl shadow-black/20">
+                {/* Header con gradiente sutil */}
+                <div className="grid grid-cols-[60px_1fr_120px_100px_140px_140px_80px] gap-4 px-6 py-4 bg-gradient-to-r from-slate-800/80 via-slate-800/60 to-slate-800/80 border-b border-slate-700/50">
+                  <div className="text-xs font-bold uppercase tracking-wider text-slate-500">#</div>
+                  <div className="text-xs font-bold uppercase tracking-wider text-slate-500">Concepto</div>
+                  <div className="text-xs font-bold uppercase tracking-wider text-slate-500 text-right">Cantidad</div>
+                  <div className="text-xs font-bold uppercase tracking-wider text-slate-500">Unidad</div>
+                  <div className="text-xs font-bold uppercase tracking-wider text-slate-500 text-right">Costo Unit.</div>
+                  <div className="text-xs font-bold uppercase tracking-wider text-slate-500 text-right">Importe</div>
+                  <div className="text-xs font-bold uppercase tracking-wider text-slate-500 text-center">Acción</div>
+                </div>
+
+                {/* Filas de datos con mejor diseño */}
+                <div className="divide-y divide-slate-800/50">
                   {draft.items.map((item, index) => (
-                    <TableRow key={item.id}>
-                      <TableCell>{index + 1}</TableCell>
-                      <TableCell>
+                    <div 
+                      key={item.id}
+                      className="group grid grid-cols-[60px_1fr_120px_100px_140px_140px_80px] gap-4 px-6 py-4 items-center transition-all duration-200 hover:bg-slate-800/40"
+                    >
+                      {/* Número de partida */}
+                      <div className="flex justify-center">
+                        <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-slate-700/50 text-xs font-semibold text-slate-400">
+                          {index + 1}
+                        </span>
+                      </div>
+
+                      {/* Concepto */}
+                      <div className="min-w-0">
                         <ConceptAutocompleteField
                           value={item.concepto}
                           onValueChange={(value) => updateConceptItem(item.id, value)}
+                          className="border-slate-600/50 bg-slate-800/50 focus:border-cyan-500/50 focus:ring-cyan-500/20"
                         />
-                      </TableCell>
-                      <TableCell>
+                      </div>
+
+                      {/* Cantidad */}
+                      <div>
                         <NumericInput
                           min={0}
                           step={0.01}
                           decimals={2}
                           value={item.cantidad}
-                          onChange={(value) =>
-                            updateItem(item.id, "cantidad", value)
-                          }
+                          onChange={(value) => updateItem(item.id, "cantidad", value)}
+                          className="border-slate-600/50 bg-slate-800/50 text-right focus:border-cyan-500/50"
                         />
-                      </TableCell>
-                      <TableCell>
+                      </div>
+
+                      {/* Unidad */}
+                      <div>
                         <UnitSelectField
                           value={item.unidad}
                           onValueChange={(value) => updateItem(item.id, "unidad", value)}
+                          className="border-slate-600/50 bg-slate-800/50"
                         />
-                      </TableCell>
-                      <TableCell>
+                      </div>
+
+                      {/* Costo Unitario */}
+                      <div>
                         <NumericInput
                           min={0}
                           step={0.01}
@@ -852,99 +865,70 @@ export default function HomePage() {
                           onChange={(value) =>
                             updateItem(item.id, "costoUnitarioCentavos", Math.round(value * 100))
                           }
-                          className="text-right"
+                          className="border-slate-600/50 bg-slate-800/50 text-right focus:border-cyan-500/50"
                           placeholder="0.00"
                         />
-                      </TableCell>
-                      <TableCell className="text-right font-semibold text-slate-100">
-                        {formatMXNFromCentavos(getLineTotalCentavos(item))}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button
-                          variant="ghost"
-                          className="text-red-300 hover:bg-red-950/60 hover:text-red-200"
+                      </div>
+
+                      {/* Importe */}
+                      <div className="text-right">
+                        <span className="text-sm font-semibold text-cyan-400 tabular-nums">
+                          {formatMXNFromCentavos(getLineTotalCentavos(item))}
+                        </span>
+                      </div>
+
+                      {/* Botón eliminar con icono */}
+                      <div className="flex justify-center">
+                        <button
                           onClick={() => removeRow(item.id)}
                           disabled={draft.items.length === 1}
+                          className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 transition-all duration-200 hover:bg-red-500/10 hover:text-red-400 disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-slate-500"
+                          title="Eliminar partida"
                         >
-                          Eliminar
-                        </Button>
-                      </TableCell>
-                    </TableRow>
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="16"
+                            height="16"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          >
+                            <path d="M3 6h18" />
+                            <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+                            <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
                   ))}
-                </TableBody>
-                <TableFooter>
-                  <TableRow>
-                    <TableCell colSpan={5} className="text-right font-semibold">
-                      Total
-                    </TableCell>
-                    <TableCell className="text-right text-base font-bold text-slate-100">
-                      {formatMXNFromCentavos(subtotalCentavos)}
-                    </TableCell>
-                    <TableCell />
-                  </TableRow>
-                </TableFooter>
-              </Table>
-            </div>
-
-            <Button variant="outline" onClick={addRow} className="w-full md:w-auto">
-              Agregar fila
-            </Button>
-          </CardContent>
-        </Card>
-
-        <Card className="no-print border-slate-700/50 bg-slate-800/50 backdrop-blur-sm">
-          <CardContent className="grid gap-6 pt-6 lg:grid-cols-[2fr_1fr]">
-            <div className="space-y-2">
-              <Label htmlFor="notas" className="text-slate-300">Notas u observaciones</Label>
-              <Textarea
-                id="notas"
-                value={draft.notas}
-                onChange={(event) => updateField("notas", event.target.value)}
-                placeholder="Ej. Tiempo de entrega, forma de pago, alcances del trabajo..."
-                className="border-slate-600 bg-slate-900/50 text-slate-100 placeholder:text-slate-600"
-              />
-            </div>
-            <div className="rounded-lg border border-slate-700/50 bg-gradient-to-br from-slate-900/80 to-slate-800/80 p-4">
-              <p className="text-sm font-semibold text-slate-200">Resumen</p>
-              <div className="mt-3 space-y-2 text-sm">
-                <div className="flex items-center justify-between text-slate-400">
-                  <span>Moneda</span>
-                  <span className="font-medium text-slate-200">MXN ($)</span>
                 </div>
-                <div className="flex items-center justify-between border-t border-slate-700 pt-2">
-                  <span className="text-base font-semibold text-slate-100">Total</span>
-                  <span className="text-xl font-bold text-emerald-400">
-                    {formatMXNFromCentavos(subtotalCentavos)}
-                  </span>
+
+                {/* Footer con total */}
+                <div className="grid grid-cols-[60px_1fr_120px_100px_140px_140px_80px] gap-4 px-6 py-5 bg-gradient-to-r from-slate-800/60 via-slate-800/40 to-slate-800/60 border-t border-slate-700/50">
+                  <div></div>
+                  <div></div>
+                  <div></div>
+                  <div></div>
+                  <div className="text-right">
+                    <span className="text-sm font-bold text-slate-300 uppercase tracking-wider">Total</span>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-lg font-bold text-emerald-400 tabular-nums">
+                      {formatMXNFromCentavos(subtotalCentavos)}
+                    </span>
+                  </div>
+                  <div></div>
                 </div>
               </div>
             </div>
-          </CardContent>
-        </Card>
 
-        <Card className="no-print border-slate-700/50 bg-slate-800/50 backdrop-blur-sm">
-          <CardContent className="flex flex-wrap items-center justify-between gap-4 pt-6">
-            <div className="flex items-center gap-2 text-sm text-slate-400">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <circle cx="12" cy="12" r="10" />
-                <line x1="12" x2="12" y1="16" y2="12" />
-                <line x1="12" x2="12.01" y1="8" y2="8" />
-              </svg>
-              <span>Se abrirá el diálogo de impresión del navegador</span>
-            </div>
-            <Button
-              onClick={exportToPdf}
-              className="bg-gradient-to-r from-cyan-600 to-blue-600 text-white hover:from-cyan-500 hover:to-blue-500"
+            <Button 
+              variant="outline" 
+              onClick={addRow} 
+              className="w-full md:w-auto group border-dashed border-slate-600 hover:border-cyan-500 hover:bg-cyan-950/20 transition-all duration-200"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -956,16 +940,118 @@ export default function HomePage() {
                 strokeWidth="2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                className="mr-2"
+                className="mr-2 text-slate-400 group-hover:text-cyan-400 transition-colors"
+              >
+                <path d="M5 12h14" />
+                <path d="M12 5v14" />
+              </svg>
+              Agregar partida
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card className="no-print border-slate-700/50 bg-slate-800/50 backdrop-blur-sm">
+          <CardContent className="grid gap-6 pt-6 lg:grid-cols-[2fr_1fr]">
+            <div className="space-y-2">
+              <Label htmlFor="notas" className="text-sm font-medium text-slate-300 flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-slate-500">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                  <polyline points="14 2 14 8 20 8"/>
+                  <line x1="16" y1="13" x2="8" y2="13"/>
+                  <line x1="16" y1="17" x2="8" y2="17"/>
+                  <polyline points="10 9 9 9 8 9"/>
+                </svg>
+                Notas u observaciones
+              </Label>
+              <Textarea
+                id="notas"
+                value={draft.notas}
+                onChange={(event) => updateField("notas", event.target.value)}
+                placeholder="Ej. Tiempo de entrega, forma de pago, alcances del trabajo, condiciones especiales..."
+                className="min-h-[120px] border-slate-600/50 bg-slate-900/30 text-slate-100 placeholder:text-slate-600 focus:border-cyan-500/50 focus:ring-cyan-500/20 resize-none"
+              />
+            </div>
+            <div className="rounded-xl border border-slate-700/50 bg-gradient-to-br from-slate-900/60 via-slate-800/40 to-slate-900/60 p-5 shadow-inner">
+              <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-4">Resumen de cotización</p>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-slate-400">Partidas</span>
+                  <span className="font-medium text-slate-200">{draft.items.length}</span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-slate-400">Moneda</span>
+                  <span className="inline-flex items-center gap-1.5 font-medium text-slate-200">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-emerald-500">
+                      <line x1="12" y1="1" x2="12" y2="23"/>
+                      <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                    </svg>
+                    MXN
+                  </span>
+                </div>
+                <div className="pt-3 border-t border-slate-700/50">
+                  <div className="flex items-baseline justify-between">
+                    <span className="text-sm font-semibold text-slate-300">Total</span>
+                    <span className="text-2xl font-bold text-emerald-400 tabular-nums tracking-tight">
+                      {formatMXNFromCentavos(subtotalCentavos)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <div className="no-print rounded-xl border border-slate-700/50 bg-gradient-to-r from-slate-800/50 via-slate-800/30 to-slate-800/50 p-6 backdrop-blur-sm">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-700/50">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="text-cyan-400"
+                >
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="12" x2="12" y1="16" y2="12" />
+                  <line x1="12" x2="12.01" y1="8" y2="8" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-slate-200">Listo para exportar</p>
+                <p className="text-xs text-slate-500">Se abrirá el diálogo de impresión del navegador</p>
+              </div>
+            </div>
+            
+            <Button
+              onClick={exportToPdf}
+              className="group bg-gradient-to-r from-cyan-600 to-blue-600 text-white hover:from-cyan-500 hover:to-blue-500 shadow-lg shadow-cyan-500/25 hover:shadow-cyan-500/40 transition-all duration-200"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="mr-2 group-hover:scale-110 transition-transform"
               >
                 <polyline points="6 9 6 2 18 2 18 9" />
                 <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
                 <rect width="12" height="8" x="6" y="14" />
               </svg>
-              Exportar PDF
+              Exportar a PDF
             </Button>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
 
       {/* Toast Notifications */}

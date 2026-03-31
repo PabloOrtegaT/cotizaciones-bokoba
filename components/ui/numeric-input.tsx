@@ -19,7 +19,6 @@ const NumericInput = React.forwardRef<HTMLInputElement, NumericInputProps>(
     onChange, 
     min = 0, 
     max,
-    step = 0.01,
     decimals = 2,
     allowEmpty = false,
     className,

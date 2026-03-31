@@ -120,7 +120,7 @@ const SearchableSelect = React.forwardRef<HTMLInputElement, SearchableSelectProp
     };
 
     // Handle blur - save custom text if enabled
-    const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    const handleBlur = (_event: React.FocusEvent<HTMLInputElement>) => {
       // Small delay to allow click events on dropdown items to fire first
       setTimeout(() => {
         if (allowFreeText && search.trim() && search.trim() !== value) {
@@ -224,6 +224,7 @@ const SearchableSelect = React.forwardRef<HTMLInputElement, SearchableSelectProp
             placeholder={placeholder}
             disabled={disabled}
             autoComplete="off"
+            role="combobox"
             aria-expanded={isOpen}
             aria-haspopup="listbox"
             aria-controls={isOpen ? `${id}-listbox` : undefined}
@@ -349,6 +350,7 @@ const SearchableSelect = React.forwardRef<HTMLInputElement, SearchableSelectProp
                   <li
                     id={`${id}-option-${filteredOptions.length}`}
                     role="option"
+                    aria-selected="false"
                     onClick={handleSelectCustom}
                     onMouseEnter={() => setHighlightedIndex(filteredOptions.length)}
                     className={cn(
