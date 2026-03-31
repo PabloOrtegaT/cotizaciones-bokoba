@@ -117,8 +117,9 @@ function UnitSelectField({ id, value, onValueChange, className }: UnitSelectFiel
       }))}
       value={value}
       onValueChange={onValueChange}
-      placeholder="Seleccionar unidad..."
+      placeholder="Escribe o selecciona..."
       allowFreeText={true}
+      showDropdownArrow={false}
       className={className}
     />
   );
@@ -741,41 +742,61 @@ export default function HomePage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="space-y-3 md:hidden">
+            <div className="space-y-2 md:hidden">
               {draft.items.map((item, index) => (
-                <article key={item.id} className="rounded-md border border-slate-700 bg-slate-800/90 p-3">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="text-xs text-slate-400">Partida #{index + 1}</p>
-                      <p className="mt-1 text-sm font-semibold text-slate-100">
-                        {item.concepto.trim() || "Sin concepto"}
-                      </p>
-                    </div>
-                    <p className="text-sm font-semibold text-slate-100">
+                <article 
+                  key={item.id} 
+                  className="group flex items-center gap-3 rounded-lg border border-slate-700 bg-slate-800/90 p-3 transition-all duration-200 hover:border-slate-600 hover:bg-slate-800"
+                >
+                  {/* Número de partida */}
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-slate-700/50 text-xs font-semibold text-slate-400">
+                    {index + 1}
+                  </div>
+
+                  {/* Info principal: Concepto + resumen */}
+                  <div className="flex-1 min-w-0">
+                    <p className="truncate text-sm font-medium text-slate-100">
+                      {item.concepto.trim() || "Sin concepto"}
+                    </p>
+                    <p className="mt-0.5 text-xs text-slate-500">
+                      {formatCantidad(item.cantidad)} {item.unidad} × {formatMXNFromCentavos(item.costoUnitarioCentavos)}
+                    </p>
+                  </div>
+
+                  {/* Importe total */}
+                  <div className="shrink-0 text-right">
+                    <p className="text-sm font-semibold text-cyan-400">
                       {formatMXNFromCentavos(getLineTotalCentavos(item))}
                     </p>
                   </div>
-                  <div className="mt-3 grid grid-cols-2 gap-2">
-                    <div className="rounded-md border border-slate-700 bg-slate-900/50 px-2 py-1.5 min-w-0">
-                      <p className="text-[10px] uppercase tracking-wide text-slate-500 truncate">Cantidad</p>
-                      <p className="text-sm text-slate-200 truncate">{formatCantidadConUnidad(item.cantidad, item.unidad)}</p>
-                    </div>
-                    <div className="rounded-md border border-slate-700 bg-slate-900/50 px-2 py-1.5 min-w-0">
-                      <p className="text-[10px] uppercase tracking-wide text-slate-500 truncate">Costo unit.</p>
-                      <p className="text-sm text-slate-200 truncate">{formatMXNFromCentavos(item.costoUnitarioCentavos)}</p>
-                    </div>
-                  </div>
-                  <div className="mt-3 grid grid-cols-2 gap-2">
-                    <Button variant="outline" onClick={() => setEditingItemId(item.id)}>
-                      Editar
+
+                  {/* Botones de acción - iconos compactos */}
+                  <div className="flex shrink-0 items-center gap-1">
+                    <Button 
+                      variant="ghost" 
+                      size="icon"
+                      onClick={() => setEditingItemId(item.id)}
+                      className="h-9 w-9 text-slate-400 hover:bg-cyan-950/50 hover:text-cyan-400"
+                      title="Editar"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
+                        <path d="m15 5 4 4"/>
+                      </svg>
                     </Button>
                     <Button
                       variant="ghost"
-                      className="text-red-300 hover:bg-red-950/60 hover:text-red-200"
+                      size="icon"
                       onClick={() => removeRow(item.id)}
                       disabled={draft.items.length === 1}
+                      className="h-9 w-9 text-slate-400 hover:bg-red-950/50 hover:text-red-400 disabled:opacity-30"
+                      title="Eliminar"
                     >
-                      Eliminar
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M3 6h18"/>
+                        <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>
+                        <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
+                      </svg>
                     </Button>
                   </div>
                 </article>
@@ -982,8 +1003,9 @@ export default function HomePage() {
                   }))}
                   value={editingItem.concepto}
                   onValueChange={(value) => updateConceptItem(editingItem.id, value)}
-                  placeholder="Buscar concepto..."
+                  placeholder="Escribe o selecciona..."
                   allowFreeText={true}
+                  showDropdownArrow={false}
                 />
               </div>
 
@@ -1002,16 +1024,10 @@ export default function HomePage() {
 
               <div className="space-y-1.5">
                 <Label htmlFor="movil-unidad" className="text-xs text-slate-400">Unidad</Label>
-                <SearchableSelect
+                <UnitSelectField
                   id="movil-unidad"
-                  options={UNIT_OPTIONS.map((opt) => ({
-                    value: opt.value,
-                    label: opt.label
-                  }))}
                   value={editingItem.unidad}
                   onValueChange={(value) => updateItem(editingItem.id, "unidad", value)}
-                  placeholder="Seleccionar unidad..."
-                  allowFreeText={true}
                 />
               </div>
 

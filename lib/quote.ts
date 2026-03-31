@@ -124,7 +124,7 @@ export function getUnitOptions(currentUnit = "") {
   }
 
   return [
-    { value: currentUnit, label: `${currentUnit} (actual)` },
+    { value: currentUnit, label: currentUnit },
     ...UNIT_OPTIONS
   ];
 }

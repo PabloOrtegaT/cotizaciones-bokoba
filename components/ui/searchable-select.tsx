@@ -20,6 +20,7 @@ export type SearchableSelectProps = {
   disabled?: boolean;
   allowFreeText?: boolean;
   freeTextLabel?: string;
+  showDropdownArrow?: boolean;
 };
 
 const SearchableSelect = React.forwardRef<HTMLInputElement, SearchableSelectProps>(
@@ -33,7 +34,8 @@ const SearchableSelect = React.forwardRef<HTMLInputElement, SearchableSelectProp
     inputClassName, 
     disabled, 
     allowFreeText = false,
-    freeTextLabel = "Usar:"
+    freeTextLabel = "Usar:",
+    showDropdownArrow = true
   }, ref) => {
     const [isOpen, setIsOpen] = React.useState(false);
     const [search, setSearch] = React.useState("");
@@ -247,35 +249,37 @@ const SearchableSelect = React.forwardRef<HTMLInputElement, SearchableSelectProp
           )}
 
           {/* Dropdown toggle button */}
-          <button
-            type="button"
-            onClick={() => {
-              if (!isOpen) {
-                inputRef.current?.focus();
-              } else {
-                setIsOpen(false);
-              }
-            }}
-            disabled={disabled}
-            tabIndex={-1}
-            className="absolute inset-y-0 right-0 flex h-12 w-12 items-center justify-center text-slate-400 transition-colors hover:text-slate-200 disabled:opacity-50"
-            aria-label={isOpen ? "Cerrar lista" : "Abrir lista"}
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className={cn("transition-transform duration-200", isOpen && "rotate-180")}
+          {showDropdownArrow && (
+            <button
+              type="button"
+              onClick={() => {
+                if (!isOpen) {
+                  inputRef.current?.focus();
+                } else {
+                  setIsOpen(false);
+                }
+              }}
+              disabled={disabled}
+              tabIndex={-1}
+              className="absolute inset-y-0 right-0 flex h-12 w-12 items-center justify-center text-slate-400 transition-colors hover:text-slate-200 disabled:opacity-50"
+              aria-label={isOpen ? "Cerrar lista" : "Abrir lista"}
             >
-              <path d="m6 9 6 6 6-6" />
-            </svg>
-          </button>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className={cn("transition-transform duration-200", isOpen && "rotate-180")}
+              >
+                <path d="m6 9 6 6 6-6" />
+              </svg>
+            </button>
+          )}
         </div>
 
         {/* Dropdown menu */}
