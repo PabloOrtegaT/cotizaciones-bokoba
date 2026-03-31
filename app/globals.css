@@ -144,13 +144,28 @@
     padding: 0 !important;
   }
 
+  /* Forzar Arial en TODO el documento impreso */
+  * {
+    font-family: Arial, Helvetica, sans-serif !important;
+  }
+
   body {
     background: white !important;
     font-family: Arial, Helvetica, sans-serif !important;
   }
 
+  /* Asegurar que todos los elementos dentro de print-only usen Arial */
   .print-only,
-  .print-only * {
+  .print-only *,
+  .print-only *::before,
+  .print-only *::after {
+    font-family: Arial, Helvetica, sans-serif !important;
+  }
+
+  /* Sobrescribir cualquier fuente de sistema en elementos específicos */
+  h1, h2, h3, h4, h5, h6,
+  p, span, div, td, th,
+  table, tr, section, header, footer {
     font-family: Arial, Helvetica, sans-serif !important;
   }
 }

@@ -1158,7 +1158,7 @@ export default function HomePage() {
         })}
       </datalist>
 
-      <section className="print-only print-borderless mx-auto mt-0 max-w-4xl bg-white p-8 text-slate-900">
+      <section className="print-only print-borderless mx-auto mt-0 max-w-4xl bg-white p-8 text-slate-900" style={{ fontFamily: 'Arial, Helvetica, sans-serif' }}>
         <header className="flex items-start justify-between border-b border-slate-300 pb-4">
           <div className="flex items-start gap-3">
             <div className="grid h-14 w-14 place-items-center rounded-full border-2 border-slate-900 text-lg font-bold">
